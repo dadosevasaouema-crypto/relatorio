@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório Socioeconômico de Ingressantes</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+:root{
+  --primary:#1e40af; --primary-dark:#1e3a8a; --bg:#f8fafc; --card:#fff;
+  --text:#1e293b; --muted:#64748b; --border:#e2e8f0;
+  --accent:#3b82f6; --danger:#ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1400px;margin:0 auto;padding:24px}
+
+.report-header{
+  background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+  color:#fff;padding:40px;border-radius:12px;margin-bottom:32px;
+  box-shadow:0 4px 20px rgba(30,64,175,.15)
+}
+.report-header h1{font-size:2.2rem;font-weight:700;margin-bottom:8px}
+.report-header .subtitle{opacity:.9;font-size:1.1rem}
+.report-meta{margin-top:20px;font-size:.9rem;opacity:.85;display:flex;gap:24px;flex-wrap:wrap}
+
+.upload-card{
+  background:var(--card);border-radius:12px;padding:32px;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);border:2px dashed var(--border);
+  margin-bottom:32px
+}
+.upload-card h2{color:var(--primary);margin-bottom:20px;font-size:1.3rem}
+.upload-card label{display:block;margin:16px 0 8px;font-weight:600;font-size:.9rem}
+.upload-card input[type=file]{
+  width:100%;max-width:520px;padding:10px 14px;border:2px solid var(--border);
+  border-radius:8px;font-size:.95rem;transition:border-color .2s
+}
+.upload-card input:focus{outline:none;border-color:var(--primary)}
+.upload-card button{
+  margin-top:20px;background:var(--primary);color:#fff;border:none;
+  padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;
+  transition:background .2s
+}
+.upload-card button:hover:not(:disabled){background:var(--primary-dark)}
+.upload-card button:disabled{opacity:.5;cursor:not-allowed}
+.hint{margin-top:12px;font-size:.85rem;color:var(--muted)}
+
+.loading{text-align:center;padding:60px 20px;background:var(--card);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:24px}
+.spinner{width:50px;height:50px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.section{background:var(--card);border-radius:12px;padding:32px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.section h2{color:var(--primary);font-size:1.4rem;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat-card{background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);padding:20px;border-radius:10px;border-left:4px solid var(--primary)}
+.stat-card .value{font-size:1.8rem;font-weight:700;color:var(--primary-dark);margin-bottom:4px}
+.stat-card .label{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.stat-card .sub{font-size:.75rem;color:var(--muted);margin-top:4px}
+
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px}
+.chart-card{background:#fafbfc;border-radius:10px;padding:20px;border:1px solid var(--border);margin-bottom:16px}
+.chart-card h3{font-size:1rem;color:var(--text);margin-bottom:16px;font-weight:600}
+.chart-container{position:relative;height:300px}
+.chart-container.tall{height:400px}
+
+.table-wrapper{overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:.9rem}
+.data-table th{background:#f1f5f9;padding:10px 12px;text-align:left;font-weight:600;border-bottom:2px solid var(--border);font-size:.85rem}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.data-table tr:hover{background:#f8fafc}
+.percent-badge{display:inline-block;padding:2px 8px;background:#dbeafe;color:var(--primary-dark);border-radius:12px;font-size:.8rem;font-weight:600}
+
+.insights-content{line-height:1.8}
+.insights-content h1,.insights-content h2,.insights-content h3{color:var(--primary-dark);margin:20px 0 10px}
+.insights-content h1{font-size:1.4rem}
+.insights-content h2{font-size:1.2rem}
+.insights-content h3{font-size:1.05rem}
+.insights-content ul,.insights-content ol{margin-left:24px;margin-bottom:12px}
+.insights-content li{margin-bottom:6px}
+.insights-content p{margin-bottom:12px}
+.insights-content strong{color:var(--primary-dark)}
+.error{background:#fef2f2;border-left:4px solid var(--danger);padding:16px;border-radius:6px;color:var(--danger)}
+.ai-loading{text-align:center;padding:40px 20px;color:var(--muted)}
+.ai-loading .spinner{width:32px;height:32px;border-width:3px}
+
+.reset-btn{background:transparent;border:2px solid var(--primary);color:var(--primary);padding:10px 22px;border-radius:8px;font-weight:600;cursor:pointer;margin-top:12px}
+.reset-btn:hover{background:var(--primary);color:#fff}
+
+@media print{
+  .upload-card,.loading,.reset-btn{display:none!important}
+  body{background:#fff}
+  .section{box-shadow:none;border:1px solid var(--border);page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="report-header">
+    <h1>Relatório Socioeconômico de Ingressantes</h1>
+    <p class="subtitle">Análise estatística e insights gerados por Inteligência Artificial</p>
+    <div class="report-meta" id="report-meta"></div>
+  </header>
+
+  <section id="upload-section">
+    <div class="upload-card">
+      <h2>📊 Configuração do Relatório</h2>
+      <label for="file-input">Selecione a planilha (.xlsx ou .xls)</label>
+      <input type="file" id="file-input" accept=".xlsx,.xls">
+      <button id="generate-btn" disabled>Gerar Relatório Completo</button>
+      <p class="hint">A IA será acionada automaticamente via Puter.js. Na primeira vez, pode ser solicitado um login gratuito para autenticação.</p>
+    </div>
+  </section>
+
+  <div class="loading" id="loading" style="display:none">
+    <div class="spinner"></div>
+    <p id="loading-msg">Processando dados e gerando relatório...</p>
+  </div>
+
+  <main id="report" style="display:none">
+    <section class="section">
+      <h2>📌 Resumo Executivo</h2>
+      <div class="cards-grid" id="summary-cards"></div>
+      <div style="text-align:center">
+        <button class="reset-btn" id="reset-btn">🔄 Gerar Novo Relatório</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>📊 Distribuições e Gráficos</h2>
+      <div class="charts-grid" id="charts-grid"></div>
+    </section>
+
+    <section class="section">
+      <h2>📋 Tabelas Detalhadas</h2>
+      <div id="tables-container"></div>
+    </section>
+
+    <section class="section">
+      <h2>🤖 Insights Estratégicos (IA)</h2>
+      <div id="insights-content" class="insights-content">
+        <div class="ai-loading">
+          <div class="spinner"></div>
+          <p>A IA está analisando os dados e gerando insights...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
+const COLORS = ['#1e40af','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#10b981','#34d399','#6ee7b7','#f59e0b','#fbbf24','#ef4444','#f87171','#8b5cf6','#a78bfa','#ec4899','#f472b6','#14b8a6','#2dd4bf','#64748b','#94a3b8'];
+
+const SHORTEN_MAP = {
+  'Ocupação manual em geral: cobrador, feirante, zelador, coletor de lixo, guarda noturno, trabalhador rural, vendedor ambulante, pescador, empregada doméstica, dentre outras.':'Ocupação manual geral',
+  'Ocupações especializadas de apoio e autônomas de pequenos negócios, bancário, comerciário, digitador, professor ensino fundamental, escrivão, operário de indústria (de móveis, têxtil, vestuário, alimentação, carro, serviços e outros), cabeleireiro, alfaiate, mestre de obras, motorista, barbeiro, ourives, pedreiro, pintor, técnico de tv.':'Especializadas/autônomas',
+  'Posto médio de supervisão ou direção de ocupação técnica e pequenos empresários, fazendeiros ou comerciantes, caixas, administradores, agentes públicos, chefe de pessoal, coletores, contador, desenhista, escrevente, diretor de escola, professor de ensino médio, pastor, protético, representante, topógrafo, dono de pequena indústria, comércio ou fazenda com 2 a 10 empregados, operário especializado.':'Supervisão/direção técnica',
+  'Profissionais liberais, cargo de gerência ou direção, proprietários de médias empresas, empresários, fazendeiros ou comerciantes com 11 a 49 empregados, delegado, promotor, defensor, gerentes, fiscais do estado, oficiais das forças armadas, prefeito, vereador, professor universitário, tabelião, dono de cartório, escrivão, diretor de repartições públicas, profissionais liberais de nível superior.':'Profissionais liberais/gerência',
+  'Altos cargos políticos e administrativos, proprietários de grandes empresas, deputados, desembargadores, juízes, auditores, empresários, fazendeiros ou comerciante com 50 empregados ou mais.':'Altos cargos/grandes empresários',
+  'Policial Militar, Bombeiro Militar, Policial Civil, Membro das Forças Armadas (Exército, Marinha, Aeronáutica), Policial Federal, Policial Rodoviário Federal.':'Forças armadas/polícia'
+};
+
+const VARIABLES = [
+  {col:'CAMPUS/CENTRO', title:'Campus/Centro', type:'bar'},
+  {col:'Qual o seu sexo?', title:'Sexo', type:'doughnut'},
+  {col:'Dentre as alternativas abaixo, escolha aquela que mais corresponde a sua cor ou raça.', title:'Cor/Raça', type:'doughnut'},
+  {col:'Qual a sua idade?', title:'Faixa etária', type:'bar'},
+  {col:'Qual seu estado civil legal?', title:'Estado civil', type:'doughnut'},
+  {col:'Você reside em:', title:'Local de residência', type:'bar'},
+  {col:'Em que tipo de estabelecimento de ensino você cursou o ensino fundamental?', title:'Tipo de escola – Fundamental', type:'doughnut'},
+  {col:'Em que tipo de estabelecimento de ensino você cursou ou cursa o ensino médio?', title:'Tipo de escola – Médio', type:'doughnut'},
+  {col:'Você frequenta ou frequentou "cursinho" pré-vestibular?', title:'Cursinho pré-vestibular', type:'doughnut'},
+  {col:'Qual o nível de escolaridade de seu pai?', title:'Escolaridade do Pai', type:'bar'},
+  {col:'Qual o nível de escolaridade de sua mãe?', title:'Escolaridade da Mãe', type:'bar'},
+  {col:'Qual a renda mensal total de sua família?', title:'Renda Familiar', type:'bar'},
+  {col:'Qual a sua ocupação?', title:'Ocupação do Ingressante', type:'bar'},
+  {col:'Com quantas pessoas você reside?', title:'Pessoas na Residência', type:'bar'},
+  {col:'Qual o meio de transporte que você mais utiliza?', title:'Transporte', type:'doughnut'},
+  {col:'Por que você optou por esta instituição?', title:'Motivo da escolha da instituição', type:'bar'},
+  {col:'Qual o fator principal que o levou a escolher o curso pelo qual está optando? (Indique apenas a alternativa predominante)', title:'Fator principal na escolha do curso', type:'bar'}
+];
+
+let charts = [];
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function shorten(label){
+  if (SHORTEN_MAP[label]) return SHORTEN_MAP[label];
+  return label.length > 30 ? label.substring(0,28)+'...' : label;
+}
+function showLoading(msg){
+  document.getElementById('loading-msg').textContent = msg || 'Processando...';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('report').style.display = 'none';
+}
+function hideLoading(){ document.getElementById('loading').style.display='none'; }
+function destroyCharts(){ charts.forEach(c=>c.destroy()); charts=[]; }
+
+// ============================================================
+// INPUT
+// ============================================================
+document.getElementById('file-input').addEventListener('change', updateBtn);
+function updateBtn(){
+  const file = document.getElementById('file-input').files[0];
+  document.getElementById('generate-btn').disabled = !file;
+}
+
+document.getElementById('reset-btn').addEventListener('click', ()=>{
+  destroyCharts();
+  document.getElementById('report').style.display='none';
+  document.getElementById('upload-section').style.display='block';
+  document.getElementById('file-input').value='';
+  document.getElementById('generate-btn').disabled=true;
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+// ============================================================
+// PARSER EXCEL
+// ============================================================
+function parseExcel(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb   = XLSX.read(data,{type:'array'});
+        const sheet= wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet,{defval:''});
+        resolve(rows);
+      }catch(err){ reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ============================================================
+// ESTATÍSTICAS
+// ============================================================
+function countValues(rows, col){
+  const counts = {};
+  rows.forEach(r=>{
+    let v = r[col];
+    v = (v===undefined||v===null||v==='') ? 'Não informado' : String(v).trim();
+    counts[v] = (counts[v]||0)+1;
+  });
+  return Object.entries(counts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([label,count])=>({label,count}));
+}
+
+function computeStats(rows){
+  const total = rows.length;
+  const summary = {};
+  VARIABLES.forEach(v=>{
+    summary[v.title] = countValues(rows,v.col).map(c=>({
+      label: c.label,
+      count: c.count,
+      percent: (c.count/total*100).toFixed(1)+'%'
+    }));
+  });
+  return {total, summary, rows};
+}
+
+function computeSummaryCards(rows){
+  const total = rows.length;
+  const pct = n => ((n/total)*100).toFixed(1)+'%';
+
+  const feminino = rows.filter(r=>r['Qual o seu sexo?']==='Feminino').length;
+
+  const negroPardo = rows.filter(r=>{
+    const v = String(r['Dentre as alternativas abaixo, escolha aquela que mais corresponde a sua cor ou raça.']||'').toLowerCase();
+    return v.includes('negra') || v.includes('preta') || v.includes('parda');
+  }).length;
+
+  const rendaBaixa = rows.filter(r=>{
+    const v = String(r['Qual a renda mensal total de sua família?']||'').toLowerCase();
+    return v.includes('até 1 salário') || v.includes('mais de 1 até 3');
+  }).length;
+
+  const escolaPublica = rows.filter(r=>
+    String(r['Em que tipo de estabelecimento de ensino você cursou ou cursa o ensino médio?']||'')
+      .toLowerCase().includes('pública')
+  ).length;
+
+  const trabalha = rows.filter(r=>{
+    const v = String(r['Qual a sua ocupação?']||'').toLowerCase().trim();
+    return v.startsWith('ocupação') || v.startsWith('ocupações') ||
+           v.startsWith('posto') || v.startsWith('profissionais') ||
+           v.startsWith('policial') || v.startsWith('altos');
+  }).length;
+
+  return [
+    {label:'Total de Ingressantes', value: total, sub:'respostas válidas'},
+    {label:'Mulheres',             value: pct(feminino),     sub: feminino+' ingressantes'},
+    {label:'Negros/Pardos',        value: pct(negroPardo),   sub: negroPardo+' ingressantes'},
+    {label:'Renda até 3 SM',       value: pct(rendaBaixa),   sub: rendaBaixa+' famílias'},
+    {label:'Escola Pública (Médio)',value: pct(escolaPublica),sub: escolaPublica+' ingressantes'},
+    {label:'Trabalham',            value: pct(trabalha),     sub: trabalha+' ingressantes'}
+  ];
+}
+
+// ============================================================
+// RENDERIZAÇÃO
+// ============================================================
+function renderMeta(rows){
+  const date = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const campuses = new Set(rows.map(r=>r['CAMPUS/CENTRO']).filter(Boolean));
+  document.getElementById('report-meta').innerHTML = `
+    <span>📅 Gerado em: ${date}</span>
+    <span>👥 Total de registros: ${rows.length}</span>
+    <span>🏛️ Campi/Centros: ${campuses.size}</span>
+  `;
+}
+
+function renderSummaryCards(rows){
+  const cards = computeSummaryCards(rows);
+  document.getElementById('summary-cards').innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="value">${c.value}</div>
+      <div class="label">${c.label}</div>
+      <div class="sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function renderCharts(rows){
+  const grid = document.getElementById('charts-grid');
+  grid.innerHTML = '';
+  const total = rows.length;
+
+  VARIABLES.forEach((v,idx)=>{
+    const counts = countValues(rows,v.col);
+    const isLong = counts.some(c=>c.label.length>25);
+    const canvasId = `chart-${idx}`;
+
+    const card = document.createElement('div');
+    card.className='chart-card';
+    card.innerHTML = `
+      <h3>${v.title}</h3>
+      <div class="chart-container ${isLong?'tall':''}">
+        <canvas id="${canvasId}"></canvas>
+      </div>`;
+    grid.appendChild(card);
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const labels = counts.map(c=>shorten(c.label));
+    const values = counts.map(c=>c.count);
+    const colors = counts.map((_,i)=>COLORS[i%COLORS.length]);
+
+    let chart;
+    if (v.type==='doughnut'){
+      chart = new Chart(ctx,{
+        type:'doughnut',
+        data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{position:'bottom',labels:{padding:12,font:{size:11},boxWidth:14}},
+            tooltip:{callbacks:{label:(c)=>`${c.label}: ${c.parsed} (${(c.parsed/total*100).toFixed(1)}%)`}}
+          }
+        }
+      });
+    } else {
+      chart = new Chart(ctx,{
+        type:'bar',
+        data:{labels,datasets:[{label:'Ingressantes',data:values,backgroundColor:colors,borderRadius:6}]},
+        options:{
+          indexAxis: isLong?'y':'x',
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:(c)=>{
+              const val = isLong?c.parsed.x:c.parsed.y;
+              return `${val} (${(val/total*100).toFixed(1)}%)`;
+            }}}
+          },
+          scales:{
+            x:{beginAtZero:true,ticks:{font:{size:10}},grid:{display:!isLong}},
+            y:{beginAtZero:true,ticks:{font:{size:10}},grid:{display:isLong}}
+          }
+        }
+      });
+    }
+    charts.push(chart);
+  });
+}
+
+function renderTables(rows){
+  const container = document.getElementById('tables-container');
+  container.innerHTML='';
+  const total = rows.length;
+
+  VARIABLES.forEach(v=>{
+    const counts = countValues(rows,v.col);
+    const wrapper = document.createElement('div');
+    wrapper.className='chart-card';
+    const rowsHtml = counts.map(c=>`
+      <tr>
+        <td>${c.label}</td>
+        <td style="text-align:right">${c.count}</td>
+        <td style="text-align:right"><span class="percent-badge">${(c.count/total*100).toFixed(1)}%</span></td>
+      </tr>`).join('');
+    wrapper.innerHTML = `
+      <h3 style="margin-bottom:12px">${v.title}</h3>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th style="text-align:right">Frequência</th>
+              <th style="text-align:right">Percentual</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+    container.appendChild(wrapper);
+  });
+}
+
+// ============================================================
+// IA VIA PUTER.JS — INSIGHTS
+// ============================================================
+function buildPrompt(stats){
+  const compact = {};
+  Object.entries(stats.summary).forEach(([key,items])=>{
+    compact[key] = items.slice(0,8).map(i=>({
+      categoria: SHORTEN_MAP[i.label] ||
+        (i.label.length>60 ? i.label.substring(0,60)+'...' : i.label),
+      qtd: i.count,
+      pct: i.percent
+    }));
+  });
+
+  return `Você é um analista sênior de dados educacionais especializado em políticas de permanência estudantil no ensino superior público brasileiro.
+
+Abaixo estão os dados socioeconômicos agregados de ${stats.total} ingressantes de uma instituição pública. Os dados foram coletados via questionário socioeconômico no ato da matrícula.
+
+DADOS AGREGADOS (categorias mais frequentes de cada variável):
+${JSON.stringify(compact,null,2)}
+
+Elabore um relatório analítico profissional em português brasileiro, em formato markdown, com a seguinte estrutura:
+
+## 1. Perfil Predominante do Ingressante
+Descreva o perfil típico usando dados concretos (sexo, raça, idade, renda, escolaridade parental, tipo de escola).
+
+## 2. Vulnerabilidades Socioeconômicas
+Identifique os principais indicadores de vulnerabilidade que podem impactar a permanência e o desempenho acadêmico. Cite percentuais.
+
+## 3. Padrões de Desigualdade
+Analise desigualdades relacionadas a gênero, raça, renda e capital cultural familiar (escolaridade dos pais).
+
+## 4. Recomendações Estratégicas
+Sugira 5 ações concretas e priorizadas de assistência estudantil, alinhadas aos dados. Seja específico.
+
+## 5. Indicadores de Alerta
+Liste os 3 indicadores que merecem atenção prioritária da gestão, justificando com dados.
+
+Regras:
+- Use dados numéricos e percentuais em todas as análises.
+- Seja objetivo, técnico e acionável.
+- Não invente dados além dos fornecidos.
+- Formate com títulos markdown (##), listas e **negrito** para destaque.`;
+}
+
+// Extrai o texto da resposta do Puter (formatos variam)
+function extractPuterText(response){
+  if (response == null) return '';
+  if (typeof response === 'string') return response;
+  if (typeof response.text === 'string' && response.text) return response.text;
+  const content = response?.message?.content;
+  if (content){
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)){
+      return content.map(p => (typeof p === 'string' ? p : (p?.text || ''))).join('');
+    }
+  }
+  if (response?.choices?.[0]?.message?.content) return response.choices[0].message.content;
+  return String(response);
+}
+
+async function callGemini(prompt){
+  if (typeof puter === 'undefined' || !puter?.ai?.chat){
+    throw new Error('Puter.js não carregou. Verifique a conexão e recarregue a página.');
+  }
+
+  // Tenta modelos em ordem de preferência
+  const models = ['google/gemini-2.0-flash', 'google/gemini-2.5-flash', 'google/gemini-1.5-flash'];
+  let lastErr;
+  for (const model of models){
+    try{
+      const response = await puter.ai.chat(prompt, { model });
+      const text = extractPuterText(response).trim();
+      if (text) return text;
+      lastErr = new Error(`Modelo ${model} retornou vazio.`);
+    }catch(err){
+      lastErr = err;
+      console.warn('Falha com modelo', model, err?.message || err);
+    }
+  }
+  throw lastErr || new Error('Nenhum modelo respondeu.');
+}
+
+function renderInsights(markdown){
+  document.getElementById('insights-content').innerHTML = marked.parse(markdown);
+}
+
+// ============================================================
+// FLUXO PRINCIPAL
+// ============================================================
+document.getElementById('generate-btn').addEventListener('click', async ()=>{
+  const file = document.getElementById('file-input').files[0];
+  if (!file) return;
+
+  showLoading('Lendo planilha e calculando estatísticas...');
+  destroyCharts();
+
+  try{
+    const rows = await parseExcel(file);
+    if (!rows.length) throw new Error('A planilha está vazia ou sem dados válidos.');
+
+    const stats = computeStats(rows);
+
+    renderMeta(rows);
+    renderSummaryCards(rows);
+    renderCharts(rows);
+    renderTables(rows);
+
+    hideLoading();
+    document.getElementById('report').style.display='block';
+    document.getElementById('upload-section').style.display='none';
+    window.scrollTo({top:0,behavior:'smooth'});
+
+    // --- Chamada IA via Puter.js ---
+    try{
+      showLoading('Consultando a IA via Puter.js... (pode ser solicitado login na 1ª vez)');
+      const prompt = buildPrompt(stats);
+      const insights = await callGemini(prompt);
+      renderInsights(insights);
+      hideLoading();
+      document.getElementById('report').style.display='block';
+    } catch(err){
+      hideLoading();
+      document.getElementById('report').style.display='block';
+      document.getElementById('insights-content').innerHTML = `
+        <div class="error">
+          <strong>Não foi possível gerar os insights com IA.</strong><br>
+          ${err.message || err}
+          <br><br>
+          <small>
+            Se for a primeira execução, aceite o login/cadastro gratuito do Puter quando solicitado
+            e clique novamente em <strong>Gerar Relatório</strong>. Verifique também se bloqueadores
+            de anúncio ou VPN estão impedindo o acesso a <code>js.puter.com</code>.
+          </small>
+        </div>`;
+    }
+
+  } catch(err){
+    hideLoading();
+    alert('Erro ao processar relatório: '+(err.message || err));
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>
